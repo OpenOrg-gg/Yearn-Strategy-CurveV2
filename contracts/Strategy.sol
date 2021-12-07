@@ -1666,22 +1666,6 @@ contract Strategy is BaseStrategy {
     using Address for address;
     using SafeMath for uint256;
 
-    //address public deployerFactory;
-
-   // function ainitialize(
-   //     address _curvePool,
-   //     address _targetToken,
-   //     address _rewardsContract,
-   //     uint256 _pid
-   // ) public {
-        //require(msg.sender == deployerFactory);
-    //    curvePool = _curvePool;
-    //    targetToken = _targetToken;
-    //    rewardsContract = _rewardsContract;
-    //    pid = _pid;
-    //    theToken.safeApprove(address(curve), type(uint256).max);
-    //}
-
     address public curvePool = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511;
     address public targetToken = 0xEd4064f376cB8d68F770FB1Ff088a3d0F3FF5c4d;
     ICurveFi public curve =
@@ -1730,8 +1714,6 @@ contract Strategy is BaseStrategy {
     uint256 internal harvestNow; // 0 for false, 1 for true if we are mid-harvest. this is used to differentiate tends vs harvests in adjustPosition
 
     constructor(address _vault) public BaseStrategy(_vault) {
-        //deployerFactory = msg.sender;
-        //ainitialize(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511, 0xEd4064f376cB8d68F770FB1Ff088a3d0F3FF5c4d, 0x19B64cB0229197cd7A42C0AE486Fd22CE4C6D9e9, 61);
         // You can set these parameters on deployment to whatever you want
         minReportDelay = 0;
         maxReportDelay = 172800; // 2 days in seconds, if we hit this then harvestTrigger = True
@@ -1803,11 +1785,16 @@ contract Strategy is BaseStrategy {
             uint256 convexBalance = convexToken.balanceOf(address(this));
 
             uint256 _keepCRV = crvBalance.mul(keepCRV).div(FEE_DENOMINATOR);
+            uint256 _stratCRV = crvBalance.mul(10).div(100);
+            uint256 _stratCVX = convexBalance.mul(10).div(100);
             IERC20(address(crv)).safeTransfer(voter, _keepCRV);
-            uint256 crvRemainder = crvBalance.sub(_keepCRV);
+            IERC20(address(crv)).safeTransfer(strategist, _stratCRV);
+            IERC20(address(convexToken)).safeTransfer(strategist, _stratCVX);
+            uint256 crvRemainder = crvBalance.sub(_keepCRV).sub(_stratCRV);
+            uint256 convexRemainder = convexBalance.sub(_stratCVX);
 
             _sellCrv(crvRemainder);
-            _sellConvex(convexBalance);
+            _sellConvex(convexRemainder);
 
             if (optimal == 0) {
                 uint256 wethBalance = weth.balanceOf(address(this));
